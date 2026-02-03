@@ -1,15 +1,21 @@
-<!DOCTYPE html><html lang="id">
+<!DOCTYPE html>
+<html lang="id">
 <head>
   <meta charset="UTF-8">
   <title>Login Admin Properti</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">  <!-- SUPABASE CDN (STABIL) -->  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>  <style>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- SUPABASE CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
+
+  <style>
     body {
       font-family: Arial, sans-serif;
       background: #f2f2f2;
       padding: 20px;
     }
     .box {
-      max-width: 420px;
+      max-width: 500px;
       margin: auto;
       background: white;
       padding: 20px;
@@ -27,21 +33,44 @@
       color: white;
       border: none;
       border-radius: 6px;
+      cursor: pointer;
     }
+    ul { padding-left: 20px; }
     .hidden { display: none; }
-  </style></head>
-<body><div class="box" id="loginBox">
+  </style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div class="box" id="loginBox">
   <h2>Login Admin</h2>
   <input type="email" id="email" placeholder="Email admin">
   <input type="password" id="password" placeholder="Password">
   <button onclick="login()">Login</button>
   <p id="status"></p>
-</div><div class="box hidden" id="adminBox">
-  <h2>Dashboard Admin</h2>
-  <p>Login berhasil 🎉</p>
+</div>
+
+<!-- DASHBOARD ADMIN PROPERTY -->
+<div class="box hidden" id="adminBox">
+  <h2>Dashboard Admin Property</h2>
+
+  <h3>Tambah Properti</h3>
+  <input id="title" placeholder="Nama Properti">
+  <input id="price" placeholder="Harga">
+  <button onclick="addProperty()">Simpan Properti</button>
+
+  <hr>
+
+  <h3>Daftar Properti</h3>
+  <ul id="propertyList"></ul>
+
+  <br>
   <button onclick="logout()">Logout</button>
-</div><script>
-  // INISIALISASI SUPABASE (PASTI JALAN)
+</div>
+
+<script>
+  // SUPABASE
   const supabaseUrl = "https://iiaxhilmcjtnfojxnhzf.supabase.co";
   const supabaseKey = "sb_publishable_gdn_tknvQ4Q6O8IclDPT3A_LZLtaANN";
 
@@ -55,22 +84,59 @@
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
 
-    if (!email || !password) {
-      document.getElementById('status').innerText = 'Email dan password wajib diisi';
-      return;
-    }
-
     const { error } = await supabase.auth.signInWithPassword({
-      email: email,
-      password: password
+      email, password
     });
 
     if (error) {
-      document.getElementById('status').innerText = 'Login gagal: ' + error.message;
+      document.getElementById('status').innerText = error.message;
     } else {
       document.getElementById('loginBox').classList.add('hidden');
       document.getElementById('adminBox').classList.remove('hidden');
+      loadProperties();
     }
+  }
+
+  // TAMBAH PROPERTI
+  async function addProperty() {
+    const title = document.getElementById('title').value;
+    const price = document.getElementById('price').value;
+
+    if (!title || !price) {
+      alert("Nama dan harga wajib diisi");
+      return;
+    }
+
+    const { error } = await supabase
+      .from('properties')
+      .insert([{ title, price }]);
+
+    if (error) {
+      alert(error.message);
+    } else {
+      document.getElementById('title').value = '';
+      document.getElementById('price').value = '';
+      loadProperties();
+    }
+  }
+
+  // LOAD DATA PROPERTI
+  async function loadProperties() {
+    const { data, error } = await supabase
+      .from('properties')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) return;
+
+    const list = document.getElementById('propertyList');
+    list.innerHTML = '';
+
+    data.forEach(p => {
+      const li = document.createElement('li');
+      li.innerText = `${p.title} - ${p.price}`;
+      list.appendChild(li);
+    });
   }
 
   // LOGOUT
@@ -78,5 +144,7 @@
     await supabase.auth.signOut();
     location.reload();
   }
-</script></body>
+</script>
+
+</body>
 </html>
