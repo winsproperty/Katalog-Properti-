@@ -1,149 +1,131 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <title>Login Admin Properti</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8">
+<title>Dashboard Admin Property</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <!-- SUPABASE CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f2f2f2;
-      padding: 20px;
-    }
-    .box {
-      max-width: 500px;
-      margin: auto;
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-    }
-    h2 { text-align: center; }
-    input, button {
-      width: 100%;
-      padding: 12px;
-      margin-top: 10px;
-      font-size: 16px;
-    }
-    button {
-      background: #2c7be5;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    ul { padding-left: 20px; }
-    .hidden { display: none; }
-  </style>
+<style>
+body {
+  font-family: Arial;
+  background: #f2f2f2;
+  padding: 20px;
+}
+.box {
+  max-width: 500px;
+  margin: auto;
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+}
+input, textarea, select, button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+}
+button {
+  background: #2c7be5;
+  color: white;
+  border: none;
+  border-radius: 6px;
+}
+.hidden { display: none; }
+.property {
+  border-bottom: 1px solid #ddd;
+  padding: 10px 0;
+}
+img {
+  width: 100%;
+  border-radius: 6px;
+}
+</style>
 </head>
 
 <body>
 
-<!-- LOGIN -->
-<div class="box" id="loginBox">
-  <h2>Login Admin</h2>
-  <input type="email" id="email" placeholder="Email admin">
-  <input type="password" id="password" placeholder="Password">
-  <button onclick="login()">Login</button>
-  <p id="status"></p>
-</div>
-
-<!-- DASHBOARD ADMIN PROPERTY -->
 <div class="box hidden" id="adminBox">
   <h2>Dashboard Admin Property</h2>
 
   <h3>Tambah Properti</h3>
-  <input id="title" placeholder="Nama Properti">
-  <input id="price" placeholder="Harga">
+  <input id="name" placeholder="Nama Properti">
+  <select id="type">
+    <option value="">Pilih Tipe</option>
+    <option>Rumah</option>
+    <option>Tanah</option>
+    <option>Ruko</option>
+  </select>
+  <input id="location" placeholder="Lokasi">
+  <textarea id="description" placeholder="Deskripsi"></textarea>
+  <input id="price" type="number" placeholder="Harga">
+  <input id="image" placeholder="URL Foto">
   <button onclick="addProperty()">Simpan Properti</button>
 
-  <hr>
-
   <h3>Daftar Properti</h3>
-  <ul id="propertyList"></ul>
+  <div id="list"></div>
 
-  <br>
   <button onclick="logout()">Logout</button>
 </div>
 
 <script>
-  // SUPABASE
-  const supabaseUrl = "https://iiaxhilmcjtnfojxnhzf.supabase.co";
-  const supabaseKey = "sb_publishable_gdn_tknvQ4Q6O8IclDPT3A_LZLtaANN";
+const supabase = window.supabase.createClient(
+  "https://iiaxhilmcjtnfojxnhzf.supabase.co",
+  "sb_publishable_gdn_tknvQ4Q6O8IclDPT3A_LZLtaANN"
+);
 
-  const supabase = window.supabase.createClient(
-    supabaseUrl,
-    supabaseKey
-  );
-
-  // LOGIN
-  async function login() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email, password
-    });
-
-    if (error) {
-      document.getElementById('status').innerText = error.message;
-    } else {
-      document.getElementById('loginBox').classList.add('hidden');
-      document.getElementById('adminBox').classList.remove('hidden');
-      loadProperties();
-    }
+async function checkLogin() {
+  const { data } = await supabase.auth.getUser();
+  if (data.user) {
+    document.getElementById("adminBox").classList.remove("hidden");
+    loadProperties();
   }
+}
+checkLogin();
 
-  // TAMBAH PROPERTI
-  async function addProperty() {
-    const title = document.getElementById('title').value;
-    const price = document.getElementById('price').value;
+async function addProperty() {
+  const data = {
+    name: name.value,
+    type: type.value,
+    location: location.value,
+    description: description.value,
+    price: price.value,
+    image_url: image.value
+  };
 
-    if (!title || !price) {
-      alert("Nama dan harga wajib diisi");
-      return;
-    }
+  const { error } = await supabase.from("properties").insert([data]);
 
-    const { error } = await supabase
-      .from('properties')
-      .insert([{ title, price }]);
-
-    if (error) {
-      alert(error.message);
-    } else {
-      document.getElementById('title').value = '';
-      document.getElementById('price').value = '';
-      loadProperties();
-    }
+  if (error) {
+    alert(error.message);
+  } else {
+    alert("Properti berhasil ditambahkan");
+    loadProperties();
   }
+}
 
-  // LOAD DATA PROPERTI
-  async function loadProperties() {
-    const { data, error } = await supabase
-      .from('properties')
-      .select('*')
-      .order('created_at', { ascending: false });
+async function loadProperties() {
+  const { data } = await supabase.from("properties").select("*").order("created_at", { ascending: false });
 
-    if (error) return;
+  const list = document.getElementById("list");
+  list.innerHTML = "";
 
-    const list = document.getElementById('propertyList');
-    list.innerHTML = '';
+  data.forEach(p => {
+    list.innerHTML += `
+      <div class="property">
+        <img src="${p.image_url}">
+        <strong>${p.name}</strong><br>
+        ${p.type} - ${p.location}<br>
+        Rp ${Number(p.price).toLocaleString("id-ID")}
+        <p>${p.description}</p>
+      </div>
+    `;
+  });
+}
 
-    data.forEach(p => {
-      const li = document.createElement('li');
-      li.innerText = `${p.title} - ${p.price}`;
-      list.appendChild(li);
-    });
-  }
-
-  // LOGOUT
-  async function logout() {
-    await supabase.auth.signOut();
-    location.reload();
-  }
+async function logout() {
+  await supabase.auth.signOut();
+  location.reload();
+}
 </script>
 
 </body>
