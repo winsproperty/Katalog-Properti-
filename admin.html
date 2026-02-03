@@ -1,0 +1,65 @@
+<!DOCTYPE html><html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Admin Properti</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f5f5f5; padding:20px; }
+    .card { background:#fff; padding:16px; border-radius:8px; max-width:480px; margin:auto; }
+    h2 { text-align:center; }
+    input, textarea, button { width:100%; padding:10px; margin-top:10px; }
+    button { background:#2e7d32; color:#fff; border:none; border-radius:6px; }
+    button:hover { background:#1b5e20; }
+  </style>
+</head>
+<body><div class="card">
+  <h2>Dashboard Admin Properti</h2>  <input id="title" placeholder="Judul Properti" />
+  <input id="type" placeholder="Tipe (Rumah, Tanah, dll)" />
+  <input id="location" placeholder="Lokasi" />
+  <input id="price" placeholder="Harga" />
+  <textarea id="description" placeholder="Deskripsi"></textarea>
+  <input type="file" id="images" multiple /><button onclick="saveProperty()">Simpan Properti</button>
+
+</div><script>
+  const supabaseUrl = "https://iiaxhilmcjtnfojxnhzf.supabase.co";
+  const supabaseKey = "sb_publishable_gdn_tknvQ4Q6O8IclDPT3A_LZLtaANN";
+  const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+  async function saveProperty() {
+    const title = document.getElementById('title').value;
+    const type = document.getElementById('type').value;
+    const location = document.getElementById('location').value;
+    const price = document.getElementById('price').value;
+    const description = document.getElementById('description').value;
+    const files = document.getElementById('images').files;
+
+    if (!files.length) return alert('Pilih minimal 1 foto');
+
+    let imageUrls = [];
+
+    for (let file of files) {
+      const fileName = Date.now() + '-' + file.name;
+      const { error } = await supabase.storage
+        .from('property-images')
+        .upload(fileName, file);
+
+      if (error) return alert('Upload gagal');
+
+      const { data } = supabase.storage
+        .from('property-images')
+        .getPublicUrl(fileName);
+
+      imageUrls.push(data.publicUrl);
+    }
+
+    const { error } = await supabase
+      .from('properties')
+      .insert([{ title, type, location, price, description, images: imageUrls }]);
+
+    if (error) return alert('Gagal simpan data');
+
+    alert('Properti berhasil disimpan');
+  }
+</script></body>
+</html>
