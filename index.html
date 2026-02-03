@@ -2,53 +2,37 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<title>Dashboard Admin Property</title>
+<title>Admin Properti</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
 
 <style>
-body {
-  font-family: Arial;
-  background: #f2f2f2;
-  padding: 20px;
-}
-.box {
-  max-width: 500px;
-  margin: auto;
-  background: white;
-  padding: 20px;
-  border-radius: 10px;
-}
-input, textarea, select, button {
-  width: 100%;
-  padding: 10px;
-  margin-top: 10px;
-}
-button {
-  background: #2c7be5;
-  color: white;
-  border: none;
-  border-radius: 6px;
-}
-.hidden { display: none; }
-.property {
-  border-bottom: 1px solid #ddd;
-  padding: 10px 0;
-}
-img {
-  width: 100%;
-  border-radius: 6px;
-}
+body { font-family: Arial; background:#f2f2f2; padding:20px }
+.box { max-width:520px; margin:auto; background:#fff; padding:20px; border-radius:10px }
+input, textarea, select, button { width:100%; padding:10px; margin-top:10px }
+button { background:#2c7be5; color:#fff; border:none; border-radius:6px }
+.hidden { display:none }
+img { width:100%; border-radius:6px; margin-top:6px }
+.property { border-bottom:1px solid #ddd; padding:10px 0 }
 </style>
 </head>
 
 <body>
 
-<div class="box hidden" id="adminBox">
-  <h2>Dashboard Admin Property</h2>
+<!-- LOGIN -->
+<div class="box" id="loginBox">
+  <h2>Login Admin</h2>
+  <input type="email" id="email" placeholder="Email admin">
+  <input type="password" id="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+  <p id="status"></p>
+</div>
 
-  <h3>Tambah Properti</h3>
+<!-- DASHBOARD -->
+<div class="box hidden" id="adminBox">
+  <h2>Dashboard Admin Properti</h2>
+
   <input id="name" placeholder="Nama Properti">
   <select id="type">
     <option value="">Pilih Tipe</option>
@@ -59,7 +43,10 @@ img {
   <input id="location" placeholder="Lokasi">
   <textarea id="description" placeholder="Deskripsi"></textarea>
   <input id="price" type="number" placeholder="Harga">
-  <input id="image" placeholder="URL Foto">
+  
+  <!-- MULTIPLE FOTO DARI GALERI -->
+  <input type="file" id="images" accept="image/*" multiple>
+
   <button onclick="addProperty()">Simpan Properti</button>
 
   <h3>Daftar Properti</h3>
@@ -74,57 +61,92 @@ const supabase = window.supabase.createClient(
   "sb_publishable_gdn_tknvQ4Q6O8IclDPT3A_LZLtaANN"
 );
 
-async function checkLogin() {
+// CEK LOGIN
+(async () => {
   const { data } = await supabase.auth.getUser();
   if (data.user) {
-    document.getElementById("adminBox").classList.remove("hidden");
+    loginBox.classList.add("hidden");
+    adminBox.classList.remove("hidden");
     loadProperties();
   }
-}
-checkLogin();
+})();
 
+// LOGIN
+async function login() {
+  const { error } = await supabase.auth.signInWithPassword({
+    email: email.value,
+    password: password.value
+  });
+  if (error) {
+    status.innerText = error.message;
+  } else {
+    location.reload();
+  }
+}
+
+// LOGOUT
+async function logout() {
+  await supabase.auth.signOut();
+  location.reload();
+}
+
+// TAMBAH PROPERTI + MULTI FOTO
 async function addProperty() {
-  const data = {
+  const files = images.files;
+  if (!files.length) return alert("Pilih minimal 1 foto");
+
+  let imageUrls = [];
+
+  for (let file of files) {
+    const fileName = Date.now() + "-" + file.name;
+    const { error } = await supabase
+      .storage.from("property-images")
+      .upload(fileName, file);
+
+    if (error) return alert(error.message);
+
+    const { data } = supabase
+      .storage.from("property-images")
+      .getPublicUrl(fileName);
+
+    imageUrls.push(data.publicUrl);
+  }
+
+  const { error } = await supabase.from("properties").insert([{
     name: name.value,
     type: type.value,
     location: location.value,
     description: description.value,
     price: price.value,
-    image_url: image.value
-  };
+    images: imageUrls
+  }]);
 
-  const { error } = await supabase.from("properties").insert([data]);
-
-  if (error) {
-    alert(error.message);
-  } else {
+  if (error) alert(error.message);
+  else {
     alert("Properti berhasil ditambahkan");
     loadProperties();
   }
 }
 
+// LOAD DATA
 async function loadProperties() {
-  const { data } = await supabase.from("properties").select("*").order("created_at", { ascending: false });
+  const { data } = await supabase
+    .from("properties")
+    .select("*")
+    .order("created_at", { ascending:false });
 
-  const list = document.getElementById("list");
   list.innerHTML = "";
-
   data.forEach(p => {
     list.innerHTML += `
       <div class="property">
-        <img src="${p.image_url}">
         <strong>${p.name}</strong><br>
         ${p.type} - ${p.location}<br>
         Rp ${Number(p.price).toLocaleString("id-ID")}
         <p>${p.description}</p>
+        ${p.images.map(img => `<img src="${img}">`).join("")}
       </div>
     `;
   });
-}
-
-async function logout() {
-  await supabase.auth.signOut();
-  location.reload();
 }
 </script>
 
